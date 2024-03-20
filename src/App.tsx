@@ -1,99 +1,84 @@
-import React, {useEffect, useRef, useState} from 'react';
-import {View, TouchableOpacity, Text, StyleSheet, Image} from 'react-native';
+import React, {useEffect, useState} from 'react';
 import {
-  Camera,
-  useCameraDevice,
-  useCameraPermission,
-} from 'react-native-vision-camera';
-import Tts from 'react-native-tts';
-import TextRecognition from '@react-native-ml-kit/text-recognition';
+  Alert,
+  BackHandler,
+  Button,
+  Image,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import {useCameraPermission} from 'react-native-vision-camera';
+import {CameraToTTS} from './CameraScreen';
+import splash from './splash.png';
 
-const CameraScreen = () => {
-  const device = useCameraDevice('back');
-  const [preview, setPreview] = useState<string | null>(null);
-  const cameraRef = useRef<Camera>(null);
+function App(): JSX.Element {
+  const {hasPermission, requestPermission} = useCameraPermission();
+  const [canView, setCanView] = useState(false);
 
-  const takePicture = async () => {
-    try {
-      if (!cameraRef.current) {
-        return;
+  useEffect(() => {
+    const backAction = () => {
+      if (canView) {
+        setCanView(false);
+        return true;
       }
 
-      Tts.stop();
-      const data = await cameraRef.current.takePhoto({
-        enableShutterSound: true,
-      });
-      setPreview(data.path);
+      Alert.alert('Hold on!', 'Are you sure you want to go back?', [
+        {
+          text: 'Cancel',
+          onPress: () => null,
+          style: 'cancel',
+        },
+        {text: 'YES', onPress: () => BackHandler.exitApp()},
+      ]);
 
-      const result = await TextRecognition.recognize('file://' + data.path);
-      Tts.speak(result.text);
-    } catch (error) {
-      console.error(error);
+      return true;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction,
+    );
+
+    return () => backHandler.remove();
+  }, [canView]);
+
+  const handleStart = () => {
+    if (!hasPermission) {
+      requestPermission();
     }
+
+    setCanView(true);
   };
 
-  const goBack = () => {
-    setPreview(null);
-    Tts.stop();
-  };
+  if (!hasPermission && canView) {
+    return <Text>You don't have permission to access camera</Text>;
+  }
 
-  if (!device) {
-    return <Text>Camera is not Available</Text>;
+  if (hasPermission && canView) {
+    return <CameraToTTS />;
   }
 
   return (
     <View style={styles.container}>
-      {!preview && (
-        <>
-          <Camera
-            ref={cameraRef}
-            style={styles.camera}
-            device={device}
-            photo
-            isActive
-          />
-          <TouchableOpacity style={styles.button} onPress={takePicture}>
-            <Text>Capture and Read</Text>
-          </TouchableOpacity>
-        </>
-      )}
-      {!!preview && (
-        <>
-          <Image style={styles.camera} source={{uri: 'file://' + preview}} />
-          <TouchableOpacity style={styles.button} onPress={goBack}>
-            <Text>Go Back</Text>
-          </TouchableOpacity>
-        </>
-      )}
+      <Image style={styles.image} source={splash} resizeMode="contain" />
+
+      <Button title="Start" onPress={handleStart} />
     </View>
   );
-};
-
-function App(): JSX.Element {
-  const {hasPermission, requestPermission} = useCameraPermission();
-
-  useEffect(() => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-  }, [hasPermission, requestPermission]);
-
-  if (!hasPermission) {
-    return <Text>You don't have permission to access camera</Text>;
-  }
-  return <CameraScreen />;
 }
 
 const styles = StyleSheet.create({
-  container: {flex: 1},
-  camera: {flex: 1},
+  container: {
+    flex: 1,
+    justifyContent: 'center', // Center vertically
+    alignItems: 'center', // Center horizontally
+  },
+  image: {
+    width: '200%',
+  },
   button: {
-    position: 'absolute',
-    bottom: 20,
-    alignSelf: 'center',
     backgroundColor: 'black',
-    padding: 10,
-    borderRadius: 5,
   },
 });
 

@@ -1,13 +1,5 @@
 import React, {useEffect, useState} from 'react';
-import {
-  Alert,
-  BackHandler,
-  Button,
-  Image,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import {Image, StyleSheet, Text, View} from 'react-native';
 import {useCameraPermission} from 'react-native-vision-camera';
 import {CameraToTTS} from './CameraScreen';
 import splash from './splash.png';
@@ -17,39 +9,14 @@ function App(): JSX.Element {
   const [canView, setCanView] = useState(false);
 
   useEffect(() => {
-    const backAction = () => {
-      if (canView) {
-        setCanView(false);
-        return true;
+    setTimeout(() => {
+      if (!hasPermission) {
+        requestPermission();
       }
 
-      Alert.alert('Hold on!', 'Are you sure you want to go back?', [
-        {
-          text: 'Cancel',
-          onPress: () => null,
-          style: 'cancel',
-        },
-        {text: 'YES', onPress: () => BackHandler.exitApp()},
-      ]);
-
-      return true;
-    };
-
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction,
-    );
-
-    return () => backHandler.remove();
-  }, [canView]);
-
-  const handleStart = () => {
-    if (!hasPermission) {
-      requestPermission();
-    }
-
-    setCanView(true);
-  };
+      setCanView(true);
+    }, 3000);
+  }, [hasPermission, requestPermission]);
 
   if (!hasPermission && canView) {
     return <Text>You don't have permission to access camera</Text>;
@@ -62,8 +29,6 @@ function App(): JSX.Element {
   return (
     <View style={styles.container}>
       <Image style={styles.image} source={splash} resizeMode="contain" />
-
-      <Button title="Start" onPress={handleStart} />
     </View>
   );
 }
